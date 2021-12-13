@@ -14,11 +14,11 @@ There are over 15,000 crypto coins to invest in and with the data set being so l
 
 Data Dictionary:
 
-Date Date of observation
-Open Opening price on the given day
-High Highest price on the given day
-Low Lowest price on the given day
-Close Closing price on the given day
-Volume Volume of transactions on the given day
-Market Cap Market capitalization
-Coin Crypto Coin [Added]
+- Date Date of observation
+- Open Opening price on the given day
+- High Highest price on the given day
+- Low Lowest price on the given day
+- Close Closing price on the given day
+- Volume Volume of transactions on the given day
+- Market Cap Market capitalization
+- Coin Crypto Coin [Added]
