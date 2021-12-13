@@ -1,0 +1,157 @@
+---
+title: "CryptoInvestments"
+author: "Jay Chudasama"
+date: "12/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## BACKGROUND AND INSPIRATION
+
+With a total crypto market cap of $2,263,042,161,49424 (coinmarketcap.com) and with over 15,501 cryto coins. Should regular investors invest in crypto as part of their overall portfolio? Being relative new in this space, should regular investors invest in crypto to improve their overall portfolio performance relative to invetment risk.
+
+## PROJECT GOALS
+
+Should regular individual investors invest in Crypto space?
+
+## DATA ANALYSIS
+
+There are over 15,000 crypto coins to invest in and with the data set being so large. I decided only to look at 10 stable coins vs alt (alternative) coins. I was able to find a recent dataset from Kaggle (https://www.kaggle.com/nward7/popular-cryptocurrency-historical-data) that provided historical prices for 10 stable coins.
+
+Data Dictionary:
+
+- Date Date of observation
+- Open Opening price on the given day
+- High Highest price on the given day
+- Low Lowest price on the given day
+- Close Closing price on the given day
+- Volume Volume of transactions on the given day
+- Market Cap Market capitalization
+- Coin Crypto Coin [Added]
+
+## DATA ANALYSIS
+
+### Data Load: 
+
+Before running any data analysis against the kaggle data set, I first needed to stitch the crypto historical files including added feature variables such at Mid Price, Coin, etc.
+
+```{r, echo = FALSE, results = FALSE, include=FALSE}
+library(plyr)
+library(readr)
+library('dplyr')
+library('ggplot2')
+library('rmarkdown')
+library('knitr')
+library('data.table')
+library(dplyr)
+library(tidyquant)
+library(timetk)
+library(dplyr)
+myfiles = list.files(path="/Users/Jay/Downloads/crypto", pattern="*.csv", full.names=TRUE)
+dat_csv = ldply(myfiles, read_csv)
+dat_csv['Coin'] = as.factor(dat_csv$Coin)
+dat_csv['Mid'] = 0.5 * (dat_csv$High + dat_csv$Low)
+# dat_csv['Market.Cap'] = dat_csv$Market.Cap*1000000
+dat_csv['Date'] = as.Date(dat_csv$Date, format = "%b %d, %Y")
+dat_csv = subset(dat_csv, Date!="2021-12-02")
+dat_csv = subset(dat_csv, Date!="2021-12-03")
+head(dat_csv,5)
+```
+
+Crypto coins in scope of data analysis:
+
+```{r,echo = FALSE}
+dat_csv %>% distinct(Coin)
+```
+Running a quick analysis, the mean price for BTC (Bitcoin) was $8,952, followed by ETH (Etherem) at $901 with Binance (BNB) averaging $102.
+
+```{r,echo = FALSE}
+library(dplyr)
+dat_csv %>% group_by(Coin) %>% 
+  dplyr::summarise(mean=mean(High)) %>%
+  arrange(desc(mean))
+```
+The total market cap as of 12/01/2021 was $2.071986e+12 for the 10 coins. This is huge number and money invested in the crypto market.
+
+```{r,echo = FALSE}
+
+dat_marketcap <- dat_csv %>% 
+  group_by(Date) %>% 
+  dplyr::summarise(Market.Cap = sum(Market.Cap)) %>% 
+  arrange(desc(Date))
+dat_marketcap
+```
+As the number of coins have increased, demand for coins increased which confirms the increased market cap over time.
+
+```{r,echo = FALSE}
+ggplot(data = dat_marketcap , aes(x = Date, y=Market.Cap))+
+  geom_line(col="red") +
+  xlab("Date")+
+  ylab("Market Cap ($)")+
+  ggtitle("Total Market Cap Over Time ")
+```
+
+To drilldown further, lets focus on each of the 10 coins and the general price trend. Over time, the prices have consistently increased. However, XRP shows a price correction and hasn't recovered from its all-time high of $3+. Tether shows extreme volatility around $1 which is pegged to the USD and used to avoid the extreme volatility of other crypto coins.
+
+```{r, echo=FALSE}
+ggplot(dat_csv,aes(x=Date,y=Mid,group=Coin))+
+  geom_line(aes(color=Coin)) + 
+  facet_wrap(~Coin, scales = "free_y")
+```
+
+Lets now take a closer look and the daily returns for each coin. As per the charts, you can generally see each coin is very volatile. For example, BTC daily extremes were +/- 20%. BNB (Binance) saw daily extremes such as 50%. Lets now look at yearly returns.
+
+```{r, echo=FALSE}
+daily_returns <- dat_csv %>%
+  group_by(Coin) %>%                    
+  tq_transmute(select = Mid, mutate_fun = periodReturn, period = 'daily', col_rename = 'returns')
+
+ggplot(daily_returns,aes(x=Date,y=returns,group=Coin))+
+  geom_line(aes(color=Coin)) + 
+  facet_wrap(~Coin, scales = "free_y")
+```
+From the yearly charts, some coins (e.g. BNB) gained 15x. BTC increased over 10X and crashed in 2018. But in general the theme across all coins demonstrate price appreciation.
+
+```{r, echo=FALSE}
+yearly_returns <- dat_csv %>%
+  group_by(Coin) %>%                    
+  tq_transmute(select = Mid, mutate_fun = periodReturn, period = 'yearly', col_rename = 'returns')
+
+ggplot(yearly_returns,aes(x=Date,y=returns,group=Coin))+
+  geom_line(aes(color=Coin)) + 
+  facet_wrap(~Coin, scales = "free_y")
+```
+Like with any investment, we can see volatility in returns. Let’s now take a closer look at the standard deviation for each coin returns. In general, many of the coins demonstrated volatility in returns with a standard deviation for BNB at 7.6x with BTC at 4.3x.
+
+```{r, echo=FALSE}
+yearly_returns %>%
+  group_by(Coin) %>%
+  dplyr::summarise(mean = mean(returns),sd = sd(returns))
+```
+As a suitable comparison, lets now compare the BTC returns (inc volatility) with the S&P500. From the data, you can see BTC yielded on average 255% with a standard deviation of 432%. While sp500 during the same period yielded 14% with a standard deviation of returns of 12%.
+
+```{r, echo=FALSE}
+BTC_yearly_returns <- yearly_returns %>% filter(Coin == 'BTC')
+sp500 <- c(0.296,0.1139,-0.0073,0.0954,0.1942,-0.0624,0.2888,0.1626,0.2426)
+BTC_yearly_returns$sp500 = sp500
+BTC_yearly_returns
+BTC_yearly_returns %>% summarise(mean(returns),sd(returns),mean(sp500),sd(sp500))
+```
+
+Next is there a diversification benefit investing in crypto relative to the S&P500. With a correlation of 0.38, the returns are correlated to the S&P. Therefore, there doesn't seem to be a diversification benefit investing in crypto.
+
+```{r, echo=FALSE}
+cor(BTC_yearly_returns$returns,BTC_yearly_returns$sp500)
+```
+
+
+## CONCLUSION
+
+In summary, should investors (included myself) invest in Crypto? The overall price appreciation across the 10 coins does yield greater returns but these returns are very volatile. However, these high returns are correlated to the S&P and hence offer little diversification benefits. But I do believe investing a small portion of your overall portfolio may provide improved returns. However, like with any investment, the appropriate research needs to be carried out and more importantly the loss recovery in case the crypto market tanks.
+
+## FUTURE WORK
+
+This analysis was fairly simplistic. To expand my analysis, I would spend time researching if there's an optimal portfolio that includes BTC, Risk Free, Stock, and Bonds. In other words, a portfolio on the efficient frontier. In addition, this analysis does not cover alt coins which are a large part of the crypto space with very extreme volatilities.
